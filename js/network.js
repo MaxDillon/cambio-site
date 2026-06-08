@@ -35,7 +35,27 @@ export class Network extends EventTarget {
   // Opens a PeerJS peer with the given ID. Pass null for a random ID.
   _openPeer(id) {
     return new Promise((resolve, reject) => {
-      const peer = id ? new Peer(id, { debug: 0 }) : new Peer({ debug: 0 });
+      const opts = {
+        debug: 1,
+        secure: true,
+        trickle: false,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' },
+            {
+              urls: [
+                'turn:openrelay.metered.ca:80?transport=tcp',
+                'turns:openrelay.metered.ca:443?transport=tcp'
+              ],
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ]
+        }
+      };
+      const peer = id ? new Peer(id, opts) : new Peer(opts);
       const onOpen = (peerId) => {
         cleanup();
         this.peer = peer;
