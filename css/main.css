@@ -1,0 +1,201 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Friendly, light, but with some life (names kept for compatibility) */
+  --felt:       #ffe7d6;   /* warm peach backdrop */
+  --felt-dark:  #e6f0ff;   /* cool sky backdrop */
+  --felt-light: #ffffff;
+  --gold:       #ff7a4d;   /* punchy coral accent */
+  --gold-light: #ff9d72;
+  --card-bg:    #ffffff;
+  --card-shadow: 0 8px 20px rgba(70,90,110,0.18);
+  --text-light: #2f3e48;   /* primary text (dark on light) */
+  --text-muted: #7a8e99;
+  --red:        #e54848;
+  --black:      #2f3e48;
+  --radius:     14px;
+
+  /* Light surfaces that replace the old dark overlays */
+  --surface:        rgba(255,255,255,0.8);
+  --surface-strong: #ffffff;
+  --border:         rgba(58,75,87,0.14);
+  --accent-2:       #2bb8b3;   /* friendly teal */
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Nunito', -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+  background: var(--felt-dark);
+  color: var(--text-light);
+}
+
+a { color: var(--gold); }
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.6em 1.4em;
+  font-size: 1rem;
+  transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
+}
+
+button:active:not(:disabled) { transform: translateY(1px); }
+
+button.primary {
+  background: var(--gold);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgba(255,138,91,0.35);
+}
+button.primary:hover:not(:disabled) {
+  background: var(--gold-light);
+}
+button.primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button:not(.primary):not(.danger) {
+  background: #fff;
+  color: var(--text-light);
+  box-shadow: 0 2px 6px rgba(70,90,110,0.12);
+}
+
+button.danger {
+  background: #ef6f6f;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(239,111,111,0.35);
+}
+
+/* ── Index page layout ── */
+#landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(150deg, #ffe7d6 0%, #ffe0ec 45%, #e2eeff 100%);
+}
+
+#landing h1 {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  color: var(--gold);
+  text-shadow: 0 2px 10px rgba(255,138,91,0.25);
+  letter-spacing: 0.02em;
+  margin-bottom: 0.2em;
+}
+
+#landing .subtitle {
+  color: var(--text-muted);
+  margin-bottom: 2.5rem;
+  font-size: 1.1rem;
+}
+
+.card-box {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(70,90,110,0.12);
+  border-radius: 20px;
+  padding: 2rem 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.card-box h2 {
+  color: var(--gold);
+  font-size: 1.2rem;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.hint-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  margin-top: -0.4rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.form-group input {
+  padding: 0.6em 0.9em;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #f5f9fb;
+  color: var(--text-light);
+  font-family: 'Nunito', monospace;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-group input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(255,138,91,0.15);
+}
+
+.divider {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  position: relative;
+}
+.divider::before, .divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 38%;
+  height: 1px;
+  background: var(--border);
+}
+.divider::before { left: 0; }
+.divider::after  { right: 0; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #3a4b57;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(58,75,87,0.3);
+  padding: 0.7em 1.4em;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 100;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Room share link ── */
+.share-link {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  word-break: break-all;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+.share-link a { color: var(--gold); }

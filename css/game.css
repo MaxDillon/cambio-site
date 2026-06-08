@@ -1,0 +1,350 @@
+/* ── Cambio game layout ── */
+
+body.game-page {
+  background: linear-gradient(155deg, #ffe7d6 0%, #ffe0ec 40%, #e2eeff 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top bar ── */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1.2rem;
+  background: var(--surface-strong);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(70,90,110,0.06);
+  font-size: 0.85rem;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+#topbar .room-info { color: var(--text-muted); white-space: nowrap; }
+#topbar .room-info strong { color: var(--gold); }
+#status-text {
+  flex: 1;
+  text-align: center;
+  color: var(--text-light);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* ── Spectator banner ── */
+#spectator-banner {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #fff6ef;
+  border-bottom: 1px solid var(--border);
+  padding: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Main ── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  gap: 1rem;
+}
+
+/* ── Lobby ── */
+#lobby-panel, #gameover-panel { text-align: center; max-width: 480px; width: 100%; }
+#lobby-panel h2 { color: var(--gold); font-size: 1.6rem; margin-bottom: 1.2rem; }
+
+#lobby-players { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.lobby-player {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--surface-strong); border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(70,90,110,0.07);
+  border-radius: var(--radius); padding: 0.6em 1.1em;
+}
+.lobby-player.waiting-slot {
+  color: var(--text-muted); font-style: italic; justify-content: center; border-style: dashed;
+}
+.lobby-ready {
+  font-size: 0.78rem; color: var(--text-muted);
+  padding: 0.2em 0.6em; border-radius: 999px; border: 1px solid var(--border);
+}
+.lobby-ready.is-ready { color: #2faa55; border-color: #2faa5544; background: rgba(95,217,122,0.14); }
+#lobby-spectators { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem; }
+#lobby-actions { display: flex; gap: 0.8rem; justify-content: center; margin: 1rem 0; }
+.lobby-share { margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted); }
+.lobby-share .share-url {
+  display: block; margin-top: 0.3rem; font-family: 'Courier New', monospace;
+  font-size: 0.75rem; color: var(--gold); word-break: break-all; cursor: pointer; text-decoration: underline;
+}
+
+/* ── Table ── */
+#table {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+#opponents {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* ── Player panel ── */
+.player-panel {
+  background: var(--surface-strong);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 14px rgba(70,90,110,0.08);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.player-panel.local {
+  background: #fffaf6;
+  border-color: rgba(255,138,91,0.35);
+}
+.player-panel.current-turn {
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(255,138,91,0.45);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+.panel-name { color: var(--text-light); }
+.player-panel.local .panel-name { color: var(--gold); }
+.cambio-flag {
+  font-size: 0.62rem; font-weight: bold; letter-spacing: 0.05em;
+  background: #ef6f6f; color: #fff; padding: 0.1em 0.4em; border-radius: 6px;
+}
+.panel-score { color: var(--gold); font-weight: bold; }
+
+/* ── Hand: original grid + penalty strip to the right ── */
+.hand {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 0.4rem;
+}
+.penalty-strip {
+  display: grid;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
+  gap: 0.4rem;
+  padding-left: 0.6rem;
+  margin-left: 0.1rem;
+  border-left: 2px dashed rgba(229,72,72,0.5);
+}
+
+/* Seat color dot in the panel header */
+.seat-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+}
+
+/* ── Penalty cards ── */
+.penalty-card {
+  width: 52px;
+  height: 74px;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s;
+}
+.penalty-card.face-down {
+  background: linear-gradient(135deg, #6a1f1f 0%, #3a0d0d 100%);
+  border: 2px solid rgba(224,86,63,0.7);
+}
+.penalty-card.face-up {
+  background: var(--card-bg);
+  border: 2px solid #e0563f;
+  box-shadow: var(--card-shadow);
+}
+.penalty-card:hover { transform: translateY(-3px); }
+.pen-badge {
+  position: absolute;
+  top: -6px; right: -6px;
+  width: 16px; height: 16px;
+  background: #e0563f; color: #fff;
+  border-radius: 50%;
+  font-size: 0.7rem; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+
+/* ── Flip animations ── */
+.grid-card.flip-miss {
+  animation: flipMiss 0.5s ease;
+  outline: 3px solid var(--flip-color, #e0563f);
+  outline-offset: 1px;
+}
+@keyframes flipMiss {
+  0%   { transform: translateX(0) rotateY(0); }
+  25%  { transform: translateX(-4px) rotateY(35deg); }
+  50%  { transform: translateX(4px) rotateY(-25deg); }
+  75%  { transform: translateX(-2px) rotateY(15deg); }
+  100% { transform: translateX(0) rotateY(0); }
+}
+.player-panel.flip-hit {
+  animation: flipHit 0.9s ease;
+}
+@keyframes flipHit {
+  0%   { box-shadow: 0 0 0 0 var(--flip-color); }
+  30%  { box-shadow: 0 0 20px 4px var(--flip-color); border-color: var(--flip-color); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.grid-card {
+  width: 52px;
+  height: 74px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s, box-shadow 0.12s;
+  position: relative;
+}
+.grid-card.face-down {
+  background: linear-gradient(135deg, #7fb3e8 0%, #4f86c6 100%);
+  border: 2px solid rgba(255,255,255,0.15);
+}
+.grid-card.face-up {
+  background: var(--card-bg);
+  border: 1px solid #ccc;
+  box-shadow: var(--card-shadow);
+  animation: cardFlip 0.25s ease;
+}
+.grid-card.selected {
+  outline: 3px solid var(--gold);
+  outline-offset: 1px;
+  transform: translateY(-4px);
+}
+.grid-card:hover { transform: translateY(-3px); }
+
+@keyframes cardFlip { 0% { transform: rotateY(90deg); } 100% { transform: rotateY(0); } }
+
+/* ── Center: piles ── */
+#table-center {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+.pile-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 64px;
+}
+.pile-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.pile-sub { font-size: 0.7rem; color: var(--text-muted); }
+
+/* Clickable piles during your draw step */
+#draw-pile, #discard-pile { border-radius: 8px; transition: transform 0.12s, box-shadow 0.12s; }
+.pile-actionable {
+  cursor: pointer;
+  box-shadow: 0 0 0 3px var(--gold), 0 0 16px rgba(255,122,77,0.5);
+  animation: pilePulse 1.3s ease-in-out infinite;
+}
+.pile-actionable:hover { transform: translateY(-3px); }
+@keyframes pilePulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--gold), 0 0 10px rgba(255,122,77,0.35); }
+  50%      { box-shadow: 0 0 0 3px var(--gold), 0 0 20px rgba(255,122,77,0.65); }
+}
+.pile-empty {
+  width: 60px; height: 84px; border-radius: 6px;
+  border: 2px dashed rgba(201,168,76,0.25);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 0.7rem;
+}
+
+/* ── Generic card face (used in piles + drawn) ── */
+.card {
+  width: 60px;
+  height: 84px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.card.face-down {
+  background: linear-gradient(135deg, #7fb3e8 0%, #4f86c6 100%);
+  border: 2px solid rgba(255,255,255,0.15);
+}
+.card.face-up {
+  background: var(--card-bg);
+  border: 1px solid #ccc;
+  box-shadow: var(--card-shadow);
+}
+.card.drawn { animation: cardFlip 0.25s ease; }
+
+/* Card face content */
+.cf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-weight: bold;
+}
+.cf.red { color: var(--red); }
+.cf.black { color: var(--black); }
+.cf-rank { font-size: 1.1rem; }
+.cf-suit { font-size: 1.4rem; }
+.grid-card .cf-rank { font-size: 0.95rem; }
+.grid-card .cf-suit { font-size: 1.2rem; }
+
+/* ── Local area ── */
+#local-area { display: flex; justify-content: center; width: 100%; }
+.spectating-note { color: var(--text-muted); font-style: italic; }
+
+/* ── Peek + action controls ── */
+#peek-panel { display: flex; justify-content: center; }
+#action-bar {
+  display: none;
+  gap: 0.7rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: 0.4rem;
+}
+
+/* ── Game over ── */
+.win-text { font-size: 2.2rem; color: var(--gold); margin-bottom: 0.8rem; }
+.loss-text { font-size: 1.8rem; color: var(--text-muted); margin-bottom: 0.8rem; }
+.final-scores { display: flex; flex-direction: column; gap: 0.3rem; align-items: center; }
+.score-line { font-size: 1rem; color: var(--text-light); }
+.score-line.winner { color: var(--gold); font-weight: bold; }
+#gameover-panel button { margin-top: 1rem; }

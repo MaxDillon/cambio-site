@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cambio — Multiplayer Card Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css?v=3">
+</head>
+<body>
+  <div id="landing">
+    <h1>♠ Cambio ♦</h1>
+    <p class="subtitle">A 2–4 player memory card game — no server required</p>
+
+    <div class="card-box">
+      <h2>Start a New Game</h2>
+      <p class="hint-text">We'll create a room with a private link you can share.</p>
+      <button class="primary" id="btn-create">Create Room</button>
+
+      <div class="divider">or join an existing room</div>
+
+      <div class="form-group">
+        <label for="join-key">Room Key</label>
+        <input type="text" id="join-key" placeholder="Enter the room key" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="primary" id="btn-join">Join Room</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    // If the URL already has a room key (e.g. from an invite link), go straight in
+    const _params = new URLSearchParams(location.search);
+    if (_params.get('room')) {
+      const _key = sanitizeKey(_params.get('room'));
+      if (_key) {
+        const _pid = randomId(10);
+        location.replace('game.html?' + new URLSearchParams({ room: _key, player: _pid }));
+      }
+    }
+
+    function randomId(len = 8) {
+      return Math.random().toString(36).slice(2, 2 + len);
+    }
+
+    function sanitizeKey(raw) {
+      return raw.trim().toLowerCase().replace(/[^a-z0-9\-]/g, '-').slice(0, 32);
+    }
+
+    function goToRoom(roomKey) {
+      const playerId = randomId(10);
+      const params = new URLSearchParams({ room: roomKey, player: playerId });
+      window.location.href = 'game.html?' + params.toString();
+    }
+
+    // Create Room → auto-generate a friendly, unique room key
+    document.getElementById('btn-create').addEventListener('click', () => {
+      const adjectives = ['silver','golden','lucky','royal','midnight','crimson','sunny','breezy','clever','jolly'];
+      const nouns      = ['ace','deck','joker','crown','blade','table','castle','otter','comet','maple'];
+      const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+      const nou = nouns[Math.floor(Math.random() * nouns.length)];
+      const key = `${adj}-${nou}-${randomId(4)}`;
+      goToRoom(key);
+    });
+
+    document.getElementById('btn-join').addEventListener('click', () => {
+      const raw = document.getElementById('join-key').value.trim();
+      if (!raw) {
+        toast('Please enter a room key.');
+        return;
+      }
+      goToRoom(sanitizeKey(raw));
+    });
+
+    // Enter key submits the join field
+    document.getElementById('join-key').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-join').click();
+    });
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2500);
+    }
+  </script>
+</body>
+</html>

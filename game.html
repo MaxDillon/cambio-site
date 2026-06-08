@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cambio — Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css?v=3">
+  <link rel="stylesheet" href="css/game.css?v=3">
+</head>
+<body class="game-page">
+
+  <div id="topbar">
+    <div class="room-info">Room: <strong id="room-key-display">—</strong></div>
+    <div id="status-text">Connecting…</div>
+    <div class="room-info" id="phase-tag"></div>
+  </div>
+
+  <div id="spectator-banner">
+    👁 You are spectating — four players are already seated.
+  </div>
+
+  <main id="main">
+
+    <!-- LOBBY -->
+    <div id="lobby-panel" style="display:none">
+      <h2>Cambio Lobby</h2>
+      <div id="lobby-players"></div>
+      <div id="lobby-spectators"></div>
+      <div id="lobby-actions">
+        <button class="primary" id="btn-ready">I'm Ready</button>
+      </div>
+      <div class="lobby-share">
+        Share to invite (2–4 players):
+        <span class="share-url" id="share-url" title="Click to copy"></span>
+      </div>
+    </div>
+
+    <!-- TABLE (shown during PEEK / PLAYING / GAME_OVER) -->
+    <div id="table" style="display:none">
+      <div id="opponents"></div>
+
+      <div id="table-center">
+        <div class="pile-group">
+          <div class="pile-label">Draw</div>
+          <div id="draw-pile"></div>
+          <div class="pile-sub" id="draw-count"></div>
+        </div>
+
+        <div class="pile-group">
+          <div class="pile-label">Drawn</div>
+          <div id="drawn-card"></div>
+        </div>
+
+        <div class="pile-group">
+          <div class="pile-label">Discard</div>
+          <div id="discard-pile"></div>
+        </div>
+      </div>
+
+      <div id="local-area"></div>
+
+      <!-- PEEK control -->
+      <div id="peek-panel" style="display:none">
+        <button class="primary" id="btn-peek-done">Done memorizing</button>
+      </div>
+
+      <!-- Turn action bar -->
+      <div id="action-bar" style="display:none">
+        <button id="btn-discard-drawn" style="display:none">Discard drawn card</button>
+        <button id="btn-king-skip" style="display:none">Skip swap</button>
+        <button class="danger" id="btn-cambio" style="display:none">Call Cambio!</button>
+      </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="gameover-panel" style="display:none">
+      <div id="gameover-message"></div>
+      <div id="lobby-actions">
+        <button class="primary" id="btn-new-game">Play Again</button>
+        <a href="index.html"><button>Leave</button></a>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="toast"></div>
+
+  <script type="module">
+    import { Network }   from './js/network.js';
+    import { GameState, powerOf } from './js/game.js';
+    import { UI }        from './js/ui.js';
+    import { randomNonce, commitOf, seedFromNonces } from './js/seed.js';
+
+    const params   = new URLSearchParams(location.search);
+    const roomKey  = params.get('room');
+    const playerId = params.get('player');
+    if (!roomKey || !playerId) location.href = 'index.html';
+
+    document.getElementById('room-key-display').textContent = roomKey;
+
+    // Invite link
+    const shareUrl = document.getElementById('share-url');
+    const inviteLink = location.origin +
+      location.pathname.replace('game.html', 'index.html') +
+      '?' + new URLSearchParams({ room: roomKey });
+    shareUrl.textContent = inviteLink;
+    shareUrl.addEventListener('click', () =>
+      navigator.clipboard.writeText(inviteLink).then(() => ui.toast('Link copied!')));
+
+    // ── State + UI ─────────────────────────────────────────────────────────
+    const game = new GameState(playerId);
+    const playerNames = new Map([[playerId, 'You']]);
+    const ui = new UI(game, playerId, playerNames);
+
+    function refreshNames() {
+      game.players.forEach((pid, i) => {
+        playerNames.set(pid, `Player ${i + 1}`);
+      });
+      game.spectators.forEach((pid, i) => {
+        if (!playerNames.has(pid)) playerNames.set(pid, `Spectator ${i + 1}`);
+      });
+    }
+
+    function applyAndRender(event) {
+      const result = game.applyEvent(event);
+      refreshNames();
+      handleResult(event, result);
+      ui.render();
+      maybeStartSeedRound();   // begin the shuffle agreement once everyone is ready
+      return result;
+    }
+
+    function emit(event) {
+      const result = applyAndRender(event);
+      net.broadcast({ type: 'GAME_EVENT', event });
+      return result;
+    }
+
+    // Reveals from powers: only the acting player's client shows the card.
+    function handleResult(event, result) {
+      if (!result) return;
+      if (result.reveal && event.playerId === playerId) {
+        ui.reveal(result.reveal.pid, result.reveal.pos);
+      }
+      if (result.cambio) {
+        ui.toast(`${playerNames.get(result.cambio) ?? 'Someone'} called Cambio!`, 3500);
+      }
+      if (result.power && event.playerId !== playerId) {
+        // brief note for spectators/opponents
+      }
+
+      // ── Flip feedback ──────────────────────────────────────────────────
+      if (result.flip) {
+        const fName = playerNames.get(result.flipper) ?? 'Someone';
+        const tName = playerNames.get(result.targetPid) ?? 'someone';
+        const isMine = result.flipper === playerId;
+
+        if (result.flip === 'fail') {
+          ui.flashFlip({ flipper: result.flipper, targetPid: result.targetPid, pos: result.pos, success: false });
+          // The flipper (only) gets to see the card they gambled on
+          if (isMine) ui.reveal(result.targetPid, result.pos);
+          ui.toast(isMine
+            ? `Wrong! You drew a penalty card.`
+            : `${fName} missed a flip on ${tName} — penalty card.`);
+        } else if (result.flip === 'success-own') {
+          ui.flashFlip({ flipper: result.flipper, targetPid: result.targetPid, pos: result.pos, success: true });
+          ui.toast(isMine ? `Match! You shed a card.` : `${fName} matched & shed a card.`);
+        } else if (result.flip === 'success-opp') {
+          ui.flashFlip({ flipper: result.flipper, targetPid: result.targetPid, pos: result.pos, success: true });
+          ui.toast(`${fName} matched ${tName}'s card!`);
+        }
+      }
+      if (result.transfer === 'done') {
+        const fName = playerNames.get(result.flipper) ?? 'Someone';
+        const tName = playerNames.get(result.targetPid) ?? 'someone';
+        ui.toast(`${fName} gave a card to ${tName}.`);
+      }
+    }
+
+    // ── Distributed commit-reveal shuffle seed ────────────────────────────────
+    // No single client (not even the connection host) decides the deck order.
+    // Each player commits hash(nonce), then reveals nonce; the agreed seed is
+    // derived from all nonces. Locked-in commits mean nobody can bias the deck.
+    const seedRound = {
+      phase: 'idle',          // idle | committing | done
+      myNonce: null,
+      commits: new Map(),     // playerId → commit hash
+      reveals: new Map(),     // playerId → nonce
+      revealed: false,
+    };
+
+    function maybeStartSeedRound() {
+      if (seedRound.phase !== 'idle') return;
+      if (game.phase !== 'LOBBY' || !game.bothReady()) return;
+      if (game.localRole !== 'player') return; // spectators just watch
+      seedRound.phase = 'committing';
+      seedRound.myNonce = randomNonce();
+      const commit = commitOf(seedRound.myNonce);
+      seedRound.commits.set(playerId, commit);
+      net.broadcast({ type: 'SEED_COMMIT', playerId, commit });
+      trySeedReveal();
+    }
+
+    // Reveal our nonce only once commits from ALL players are locked in.
+    function trySeedReveal() {
+      if (seedRound.phase !== 'committing' || seedRound.revealed) return;
+      if (game.players.every(p => seedRound.commits.has(p))) {
+        seedRound.revealed = true;
+        seedRound.reveals.set(playerId, seedRound.myNonce);
+        net.broadcast({ type: 'SEED_REVEAL', playerId, nonce: seedRound.myNonce });
+        trySeedFinish();
+      }
+    }
+
+    function onSeedCommit(from, commit) {
+      seedRound.commits.set(from, commit);
+      // A late detector may not have started its own round yet
+      maybeStartSeedRound();
+      trySeedReveal();
+    }
+
+    function onSeedReveal(from, nonce) {
+      // Verify the reveal matches the earlier commitment (anti-tamper)
+      const expected = seedRound.commits.get(from);
+      if (expected && commitOf(nonce) !== expected) {
+        ui.toast(`⚠️ ${playerNames.get(from) ?? from} sent a bad shuffle reveal.`);
+        return;
+      }
+      seedRound.reveals.set(from, nonce);
+      trySeedFinish();
+    }
+
+    function trySeedFinish() {
+      if (seedRound.phase === 'done') return;
+      if (game.phase !== 'LOBBY') return;
+      if (!game.players.every(p => seedRound.reveals.has(p))) return;
+      seedRound.phase = 'done';
+      const seed = seedFromNonces(game.players.map(p => seedRound.reveals.get(p)));
+      // Every client derives the same seed and deals locally — no broadcast needed.
+      applyAndRender({ type: 'GAME_START', seed });
+    }
+
+    // ── UI callbacks ─────────────────────────────────────────────────────────
+    ui.onReady    = () => emit({ type: 'PLAYER_READY', playerId });
+    ui.onPeekDone = () => emit({ type: 'PEEK_DONE', playerId });
+    ui.onDraw     = () => emit({ type: 'DRAW_FROM_PILE', playerId });
+    ui.onTakeDiscard = () => emit({ type: 'TAKE_FROM_DISCARD', playerId });
+    ui.onCallCambio  = () => emit({ type: 'CALL_CAMBIO', playerId });
+    ui.onDiscardDrawn = () => emit({ type: 'DISCARD_DRAWN', playerId });
+    ui.onKingSkip = () => emit({ type: 'KING_SKIP', playerId });
+    ui.onNewGame  = () => {
+      location.href = 'index.html?' + new URLSearchParams({ room: roomKey });
+    };
+
+    let flipCounter = 0;
+    const newFlipId = () => `${playerId}-${Date.now()}-${flipCounter++}`;
+
+    // Card-click handler. Priority:
+    //   1) resolving a pending transfer (pick own card to give)
+    //   2) an active turn selection (swap / power target)
+    //   3) otherwise → a flip attempt (any time, any card)
+    ui.onCardSelect = (pid, pos) => {
+      // 1) Pending transfer: I matched an opponent's card, now I give one of mine
+      if (game.pendingTransfer && game.pendingTransfer.flipper === playerId) {
+        if (pid === playerId) emit({ type: 'FLIP_TRANSFER', flipper: playerId, pos });
+        else ui.toast('Pick one of YOUR cards to hand over.');
+        return;
+      }
+
+      // 2) Turn-based selection only when it's my turn and a selection is expected
+      if (game.isLocalTurn() && isSelectionPhase(game.turnPhase)) {
+        handleTurnSelect(pid, pos);
+        return;
+      }
+
+      // 3) Default: attempt to flip-match this card against the discard top
+      if (game.canFlip()) {
+        emit({ type: 'FLIP', flipId: newFlipId(), flipper: playerId, targetPid: pid, pos });
+      }
+    };
+
+    function isSelectionPhase(tp) {
+      return ['DECIDE','SWAP_REQUIRED','POWER_OWN','POWER_OTHER','POWER_SWAP',
+              'KING_PEEK_OWN','KING_PEEK_OTHER','KING_SWAP'].includes(tp);
+    }
+
+    function handleTurnSelect(pid, pos) {
+      const tp = game.turnPhase;
+      const isOwn = pid === playerId;
+
+      switch (tp) {
+        case 'DECIDE':
+        case 'SWAP_REQUIRED':
+          if (isOwn) emit({ type: 'SWAP_DRAWN', playerId, pos });
+          else ui.toast('You can only swap into your own grid.');
+          break;
+
+        case 'POWER_OWN':
+          if (isOwn) emit({ type: 'POWER_PEEK_OWN', playerId, pos });
+          else ui.toast('A 7 or 8 only lets you peek at your OWN card.');
+          break;
+
+        case 'POWER_OTHER':
+          if (!isOwn) emit({ type: 'POWER_PEEK_OTHER', playerId, targetId: pid, pos });
+          else ui.toast("A 9 or 10 lets you peek at an OPPONENT's card.");
+          break;
+
+        case 'POWER_SWAP':
+          collectSwap(pid, pos, (a, b) =>
+            emit({ type: 'POWER_BLIND_SWAP', playerId, a, b }));
+          break;
+
+        case 'KING_PEEK_OWN':
+          if (isOwn) emit({ type: 'KING_PEEK_OWN', playerId, pos });
+          else ui.toast('King step 1: peek at one of YOUR cards.');
+          break;
+
+        case 'KING_PEEK_OTHER':
+          if (!isOwn) emit({ type: 'KING_PEEK_OTHER', playerId, targetId: pid, pos });
+          else ui.toast("King step 2: peek at an OPPONENT's card.");
+          break;
+
+        case 'KING_SWAP':
+          collectSwap(pid, pos, (a, b) =>
+            emit({ type: 'KING_SWAP', playerId, a, b }));
+          break;
+      }
+    }
+
+    // Collect two card picks, then fire the callback
+    function collectSwap(pid, pos, done) {
+      const dup = ui.selectBuffer.find(s => s.pid === pid && s.pos === pos);
+      if (dup) { // deselect
+        ui.selectBuffer = ui.selectBuffer.filter(s => !(s.pid === pid && s.pos === pos));
+        ui.render();
+        return;
+      }
+      ui.selectBuffer.push({ pid, pos });
+      ui.render();
+      if (ui.selectBuffer.length === 2) {
+        const [a, b] = ui.selectBuffer;
+        ui.clearSelection();
+        done(a, b);
+      }
+    }
+
+    // ── Network ──────────────────────────────────────────────────────────────
+    const net = new Network(roomKey);
+    const peerToPlayer = new Map();
+    const playerToPeer = new Map();
+
+    net.addEventListener('ready', ({ detail: { isHost } }) => {
+      ui.networkReady = true;
+      if (isHost) {
+        applyAndRender({ type: 'PLAYER_JOINED', playerId, isRejoining: false });
+      } else {
+        ui.render();
+      }
+    });
+
+    net.addEventListener('peer-joined', ({ detail: { networkPeerId } }) => {
+      net.sendTo(networkPeerId, {
+        type: 'HELLO',
+        playerId,
+        isRejoining: game.players.includes(playerId) || game.spectators.includes(playerId),
+      });
+      if (net.isHost) {
+        net.sendTo(networkPeerId, { type: 'STATE_SYNC', state: game.snapshot() });
+      }
+    });
+
+    net.addEventListener('peer-left', ({ detail: { networkPeerId } }) => {
+      const pid = peerToPlayer.get(networkPeerId);
+      if (pid) ui.toast(`${playerNames.get(pid) ?? 'A player'} disconnected.`);
+    });
+
+    net.addEventListener('message', ({ detail: { from, msg } }) => {
+      switch (msg.type) {
+        case 'HELLO': {
+          peerToPlayer.set(from, msg.playerId);
+          playerToPeer.set(msg.playerId, from);
+          if (net.isHost) {
+            const event = { type: 'PLAYER_JOINED', playerId: msg.playerId, isRejoining: msg.isRejoining };
+            applyAndRender(event);
+            net.broadcast({ type: 'GAME_EVENT', event });
+          }
+          break;
+        }
+        case 'STATE_SYNC':
+          game.loadSnapshot(msg.state);
+          refreshNames();
+          ui.render();
+          break;
+        case 'GAME_EVENT':
+          applyAndRender(msg.event);
+          break;
+        case 'SEED_COMMIT':
+          onSeedCommit(msg.playerId, msg.commit);
+          break;
+        case 'SEED_REVEAL':
+          onSeedReveal(msg.playerId, msg.nonce);
+          break;
+      }
+    });
+
+    ui.render();
+    net.init().catch(err => {
+      document.getElementById('status-text').textContent = 'Connection error — check your network.';
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
